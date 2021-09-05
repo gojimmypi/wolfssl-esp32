@@ -17,6 +17,13 @@ There's a [Get Started in 2021 with wolfSSL](https://www.youtube.com/watch?v=H_0
 Two sets of examples exist on the wolfSSL GitHub account: [wolfssh examples](https://github.com/wolfSSL/wolfssh/tree/master/examples)  `ssh` on port `22222` with the [wolfssl examples](https://github.com/wolfSSL/wolfssl/tree/master/examples) `tls` on port `11111`. 
 They _are_ different and they _don't_ work with each other. `TLS` and `SSH` are different, and `SSH` does not occur over a `TLS` connection.
 
+# Settings Configuration
+
+The proper file to edit is the one in the `~/esp/esp-idf/components` directory, _not_ the one in the GitHub repo! (see [how to configure TLS 1.3 DH key size? #11](https://github.com/espressif/esp-wolfssl/issues/11#issuecomment-908805153))
+
+```
+~/esp/esp-idf/components/wolfssl/wolfssl/wolfcrypt/settings.h
+```
 
 # Installation
 
@@ -68,6 +75,22 @@ idf.py -p /dev/ttyS9 -b 115200 flash
 Visual Studio users compiling in WSL may wish to turn off the CMake automated features:
 
 ~[disable-auto-cmake.png](../images/disable-auto-cmake.png)
+
+# Troubleshooing
+
+Message: `FAILED: bootloader-prefix/src/bootloader-stamp/bootloader-configure`, after `idf.py fullclean`, try `idf.py build` a second time. If that fails, try `rm sdkconfig; idf.py menuconfig`. (the defaults are typically acceptable)
+
+```
+*******************************************************************************
+# ESP-IDF Partition Table
+# Name, Type, SubType, Offset, Size, Flags
+nvs,data,nvs,0x9000,24K,
+phy_init,data,phy,0xf000,4K,
+factory,app,factory,0x10000,1M,
+*******************************************************************************
+[346/1093] Performing configure step for 'bootloader'
+FAILED: bootloader-prefix/src/bootloader-stamp/bootloader-configure
+```
 
 See also:
 
