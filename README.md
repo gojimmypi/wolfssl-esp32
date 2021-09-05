@@ -1,15 +1,22 @@
+# wolfssl-esp32
 
-# Getting Started
+Sample project files for using the wolfSSL encrypion libraries with the Espressif ESP32.
+
+## Getting Started
+
+### WARNING:
+
+The CONFIG_EXAMPLE_WIFI_PASSWORD is saved in `sdkconfig`. Exercise caution when saving to GitHub or other public locations.
 
 Terminology:
 
 wolfSSL (with the `SSL` in upper case) is the name of the organization
 wolfssl (with the `ssl` in lower case) is the name of the tls encrption libraries
-wolfssh (with the `ssh` in lower case)is the name of the ssh libraries
+wolfssh (with the `ssh` in lower case) is the name of the ssh libraries
 
-Despite `SSL` being part of the name, wolfSSL has implemented [TLS 1.3](https://www.wolfssl.com/docs/tls13/), as [SSL deprecated](https://datatracker.ietf.org/doc/html/rfc7568). 
+Despite `SSL` being part of the name, wolfSSL has implemented [TLS 1.3](https://www.wolfssl.com/docs/tls13/), as [SSL is deprecated](https://datatracker.ietf.org/doc/html/rfc7568). 
 
-The wolfSSL libraries are distributed in two parts: the [wolfSSL/wolfssl](https://github.com/wolfSSL/wolfssl) and [wolfSSL/wolfssh](https://github.com/wolfSSL/wolfssh). 
+The wolfSSL libraries are distributed in two parts: the [wolfSSL/wolfssl](https://github.com/wolfSSL/wolfssl) and [wolfSSL/wolfssh](https://github.com/wolfSSL/wolfssh), and under the [GPLv2 or commercial license](https://github.com/wolfSSL/wolfssl/blob/master/LICENSING).
 The SSH code is typically copied into the wolfssl directory.
 
 There's a [Get Started in 2021 with wolfSSL](https://www.youtube.com/watch?v=H_0AORo6ZKg) that is probably a good place to start.
@@ -17,15 +24,55 @@ There's a [Get Started in 2021 with wolfSSL](https://www.youtube.com/watch?v=H_0
 Two sets of examples exist on the wolfSSL GitHub account: [wolfssh examples](https://github.com/wolfSSL/wolfssh/tree/master/examples)  `ssh` on port `22222` with the [wolfssl examples](https://github.com/wolfSSL/wolfssl/tree/master/examples) `tls` on port `11111`. 
 They _are_ different and they _don't_ work with each other. `TLS` and `SSH` are different, and `SSH` does not occur over a `TLS` connection.
 
-# Settings Configuration
 
-The proper file to edit is the one in the `~/esp/esp-idf/components` directory, _not_ the one in the GitHub repo! (see [how to configure TLS 1.3 DH key size? #11](https://github.com/espressif/esp-wolfssl/issues/11#issuecomment-908805153))
+## Settings Configuration
+
+The proper file to edit is the one in the `~/esp/esp-idf/components` directory, _not_ the one in the GitHub repo! (see [how to configure TLS 1.3 DH key size? #11](https://github.com/espressif/esp-wolfssl/issues/11#issuecomment-908805153)).
+
+
 
 ```
-~/esp/esp-idf/components/wolfssl/wolfssl/wolfcrypt/settings.h
+ls ~/esp/esp-idf/components/wolfssl/wolfssl/wolfcrypt/settings.h
+
+echo "Ensure these are NOT commented out for esp-idf/components:"
+grep "#define WOLFSSL_ESPIDF"     ~/esp/esp-idf/components/wolfssl/wolfssl/wolfcrypt/settings.h
+grep "#define WOLFSSL_ESPWROOM32" ~/esp/esp-idf/components/wolfssl/wolfssl/wolfcrypt/settings.h
+
+# set example connection configuration SSID and password (See "Example Connection Congiration" menu item)
+# this saves SSID and password to local sdkconfig file! (be caseful if saving to say, GitHub)
+idf.py menuconfig
+
 ```
 
-# Installation
+## Frequently Used Commands
+
+```
+# prepare (only needed once per session)
+cd ~/esp/esp-idf
+. $HOME/esp/esp-idf/export.sh
+
+# configure for ESP-32 (from each project directory)
+if [ -f sdkconfig ]; then rm sdkconfig; fi
+idf.py set-target esp32
+
+# optionall adjust any other non-default settings
+idf.py menuconfig
+
+# clean
+idf.py fullclean
+
+# build
+idf.py build
+
+# flash (the -b is optional for a slower programming rate)
+idf.py flash -p /dev/ttyS9 -b 115200
+
+# connect to serial port;  Ctrl-] to exit; Ctrl-T, Ctrl-H for help; 
+idf.py monitor -p /dev/ttyS9
+```
+
+
+## Installation
 
 ```
 git clone ...
@@ -43,11 +90,11 @@ sudo apt-get install python3.8
 pip install pyserial
 ```
 
-# Install esp-idf
+## Install esp-idf
 
 
 
-# Install wolfssl and wolfssh
+## Install wolfssl and wolfssh
 
 
 
@@ -55,7 +102,7 @@ pip install pyserial
 ```
 ```
 
-# System Include Libraries
+## System Include Libraries
 
 The esp-idf does *not* look at the normal `/usr/local/include`, and the current wolfssl-ssh does *not* copy the `SSH` libraries to the correct location.
 
@@ -90,6 +137,19 @@ factory,app,factory,0x10000,1M,
 *******************************************************************************
 [346/1093] Performing configure step for 'bootloader'
 FAILED: bootloader-prefix/src/bootloader-stamp/bootloader-configure
+```
+
+Message: `Timed out waiting for packet header`, try slowing down the programming speed (the default is 460800) using the `-b` baudrate:  `idf.py -p /dev/ttyS9 -b 115200 flash`
+
+```
+Configuring flash size...
+
+A fatal error occurred: Timed out waiting for packet header
+CMake Error at run_serial_tool.cmake:56 (message):
+  /home/gojimmypi/.espressif/python_env/idf4.4_py3.8_env/bin/python
+  /home/gojimmypi/esp/esp-idf/components/esptool_py/esptool/esptool.py --chip
+  esp32 failed
+
 ```
 
 See also:
