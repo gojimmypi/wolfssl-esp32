@@ -2,6 +2,7 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.vs
-/wolfssl_benchmark/out/build/x64-Debug
-/wolfssl_benchmark/build
+*.vs
+*/out/build/*
+*/build
+*/main/out/build/*
