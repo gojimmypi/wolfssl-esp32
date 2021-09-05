@@ -1,7 +1,9 @@
-/* helper.c
+/* app_main.c
  *
  * Copyright (C) 2006-2021 wolfSSL Inc.
  *
+ * modifications by gojimmypi
+ * 
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
