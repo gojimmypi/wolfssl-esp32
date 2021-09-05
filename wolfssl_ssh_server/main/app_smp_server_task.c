@@ -42,7 +42,7 @@
 #include <wolfssl/wolfcrypt/mem_track.h>
 #endif
 
-static const char* const TAG = "tls_server";
+static const char* const TAG = "app_server";
 
 #if defined(DEBUG_WOLFSSL)
 
@@ -122,7 +122,8 @@ void my_atmel_free(int slotId)
 #endif /* CUSTOM_SLOT_ALLOCATION                                       */
 #endif /* WOLFSSL_ESPWROOM32SE && HAVE_PK_CALLBACK && WOLFSSL_ATECC508A */
 
-void tls_smp_server_task()
+// this task name is hard-coded in our local wifi_connect.c
+void app_smp_server_task()
 {
     int                sockfd;
     int                connd;
@@ -139,7 +140,7 @@ void tls_smp_server_task()
     WOLFSSL_CTX* ctx;
     WOLFSSL* ssl;
 
-    WOLFSSL_ENTER("tls_smp_server_task");
+    WOLFSSL_ENTER("app_smp_server_task");
 
 #ifdef DEBUG_WOLFSSL
     WOLFSSL_MSG("Debug ON");

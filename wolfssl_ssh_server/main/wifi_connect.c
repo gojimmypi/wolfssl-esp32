@@ -34,10 +34,10 @@
 const static int CONNECTED_BIT = BIT0;
 static EventGroupHandle_t wifi_event_group;
 /* prefix for logging */
-const static char *TAG = "tls_server";
+const static char *TAG = "app_server";
 /* proto-type definition */
-extern void tls_smp_server_task();
-static void tls_smp_server_init();
+extern void app_smp_server_task();
+static void app_smp_server_init();
 
 static void set_time()
 {
@@ -70,24 +70,24 @@ static void set_time()
                                             false, true, portMAX_DELAY);
 #endif
     /* now we start client tasks. */
-    tls_smp_server_init();
+    app_smp_server_init();
 }
 
 /* create task */
-static void tls_smp_server_init(void)
+static void app_smp_server_init(void)
 {
     int ret;
     xTaskHandle _handle;
     /* http://esp32.info/docs/esp_idf/html/dd/d3c/group__xTaskCreate.html */
-    ret = xTaskCreate(tls_smp_server_task,
-                      TLS_SMP_SERVER_TASK_NAME,
-                      TLS_SMP_SERVER_TASK_WORDS,
+    ret = xTaskCreate(app_smp_server_task,
+                      APP_SMP_SERVER_TASK_NAME,
+                      APP_SMP_SERVER_TASK_WORDS,
                       NULL,
-                      TLS_SMP_SERVER_TASK_PRIORITY,
+                      APP_SMP_SERVER_TASK_PRIORITY,
                       &_handle);
 
     if (ret != pdPASS) {
-        ESP_LOGI(TAG, "create thread %s failed", TLS_SMP_SERVER_TASK_NAME);
+        ESP_LOGI(TAG, "create thread %s failed", APP_SMP_SERVER_TASK_NAME);
     }
 }
 /* event handler for wifi events */
@@ -148,8 +148,8 @@ void app_main(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = TLS_SMP_WIFI_SSID,
-            .password = TLS_SMP_WIFI_PASS,
+            .ssid = APP_SMP_WIFI_SSID,
+            .password = APP_SMP_WIFI_PASS,
         },
     };
     /* WiFi station mode */
@@ -161,7 +161,7 @@ void app_main(void)
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
-                                        TLS_SMP_WIFI_SSID, TLS_SMP_WIFI_PASS);
+                                        APP_SMP_WIFI_SSID, APP_SMP_WIFI_PASS);
 #endif
     ESP_LOGI(TAG, "Set dummy time...");
     set_time();
