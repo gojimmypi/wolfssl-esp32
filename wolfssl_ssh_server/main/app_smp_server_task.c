@@ -54,7 +54,7 @@
 
 int a = WS_CHANNEL_ID_SELF; // this is just a test to confirm we can access wolfssh
 
-static const char* const TAG = "app_server";
+// static const char* const TAG = "app_server";
 
 #if defined(DEBUG_WOLFSSL)
 
@@ -137,148 +137,30 @@ void my_atmel_free(int slotId)
 // this task name is hard-coded in our local wifi_connect.c
 void app_smp_server_task()
 {
-    // void* args = NULL;
-    // server_test(args);
+    void* args = NULL;
+
+    printf("WSTARTTCP\n");
+    WSTARTTCP();
+    printf("WSTARTTCP done!\n");
+
+    // TODO what's this?
+    // ChangeToWolfSshRoot();
+
+#ifdef DEBUG_WOLFSSH
+    //wolfSSH_Debugging_ON();
+    printf("wolfSSH_Debugging_ON done!\n");
+#endif
+
     wolfSSH_Init();
+    printf("wolfSSH_Init done!\n");
 
-    int                sockfd;
-    int                connd;
-    struct sockaddr_in servAddr;
-    struct sockaddr_in clientAddr;
-    socklen_t          size = sizeof(clientAddr);
-    char               buff[256];
-    size_t             len;
-    int                shutdown = 0;
-    int                ret;
-    const char msg[] = "I hear you fa shizzle!";
-
-    /* declare wolfSSL objects */
-    WOLFSSL_CTX* ctx;
-    WOLFSSL* ssl;
-
-    WOLFSSL_ENTER("app_smp_server_task");
-
-#ifdef DEBUG_WOLFSSL
-    WOLFSSL_MSG("Debug ON");
-    wolfSSL_Debugging_ON();
-    ShowCiphers();
-#endif
-
-    /* Initialize wolfSSL */
-    WOLFSSL_MSG("Start wolfSSL_Init()");
-    wolfSSL_Init();
-
-    /* Create a socket that uses an internet IPv4 address,
-     * Sets the socket to be stream based (TCP),
-     * 0 means choose the default protocol. */
-    WOLFSSL_MSG("start socket())");
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        ESP_LOGE(TAG, "ERROR: failed to create the socket");
-    }
-
-    /* Create and initialize WOLFSSL_CTX */
-    WOLFSSL_MSG("Create and initialize WOLFSSL_CTX");
-    if ((ctx = wolfSSL_CTX_new(wolfSSLv23_server_method())) == NULL) {
-        ESP_LOGE(TAG, "ERROR: failed to create WOLFSSL_CTX");
-    }
-    WOLFSSL_MSG("Loading certificate...");
-    /* Load server certificates into WOLFSSL_CTX */
-
-    if ((ret = wolfSSL_CTX_use_certificate_buffer(ctx, server_cert_der_2048,
-        sizeof_server_cert_der_2048,
-        WOLFSSL_FILETYPE_ASN1)) != SSL_SUCCESS) {
-        ESP_LOGE(TAG, "ERROR: failed to load cert");
-    }
-    WOLFSSL_MSG("Loading key info...");
-    /* Load server key into WOLFSSL_CTX */
-
-    if ((ret = wolfSSL_CTX_use_PrivateKey_buffer(ctx,
-        server_key_der_2048, sizeof_server_key_der_2048,
-        WOLFSSL_FILETYPE_ASN1)) != SSL_SUCCESS) {
-        ESP_LOGE(TAG, "ERROR: failed to load privatekey");
-    }
-
-    /* TO DO when using ECDSA, it loads the provisioned certificate and present it.*/
-    /* TO DO when using ECDSA, it uses the generated key instead of loading key    */
-
-    /* Initialize the server address struct with zeros */
-    memset(&servAddr, 0, sizeof(servAddr));
-    /* Fill in the server address */
-    servAddr.sin_family = AF_INET;             /* using IPv4      */
-    servAddr.sin_port = htons(DEFAULT_PORT); /* on DEFAULT_PORT */
-    servAddr.sin_addr.s_addr = INADDR_ANY;          /* from anywhere   */
-
-    /* Bind the server socket to our port */
-    if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) == -1) {
-        ESP_LOGE(TAG, "ERROR: failed to bind");
-    }
-
-    /* Listen for a new connection, allow 5 pending connections */
-    if (listen(sockfd, 5) == -1) {
-        ESP_LOGE(TAG, "ERROR: failed to listen");
-    }
-
-#if defined(WOLFSSL_ESPWROOM32SE) && defined(HAVE_PK_CALLBACKS) \
-                                  && defined(WOLFSSL_ATECC508A)
-    atcatls_set_callbacks(ctx);
-    /* when using a custom slot allocation */
-#if defined(CUSTOM_SLOT_ALLOCATION)
-    my_atmel_slotInit();
-    atmel_set_slot_allocator(my_atmel_alloc, my_atmel_free);
-#endif
-#endif
-
-    /* Continue to accept clients until shutdown is issued */
-    while (!shutdown) {
-        WOLFSSL_MSG("Waiting for a connection...");
-        /* Accept client connections */
-        if ((connd = accept(sockfd, (struct sockaddr*)&clientAddr, &size))
-            == -1) {
-            ESP_LOGE(TAG, "ERROR: failed to accept the connection");
-        }
-        /* Create a WOLFSSL object */
-        if ((ssl = wolfSSL_new(ctx)) == NULL) {
-            ESP_LOGE(TAG, "ERROR: failed to create WOLFSSL object");
-        }
-        /* Attach wolfSSL to the socket */
-        wolfSSL_set_fd(ssl, connd);
-        /* Establish TLS connection */
-        ret = wolfSSL_accept(ssl);
-        if (ret != SSL_SUCCESS) {
-            ESP_LOGE(TAG, "wolfSSL_accept error %d", wolfSSL_get_error(ssl, ret));
-        }
-        WOLFSSL_MSG("Client connected successfully");
-        /* Read the client data into our buff array */
-        memset(buff, 0, sizeof(buff));
-        if (wolfSSL_read(ssl, buff, sizeof(buff) - 1) == -1) {
-            ESP_LOGE(TAG, "ERROR: failed to read");
-        }
-        /* Print to stdout any data the client sends */
-        WOLFSSL_MSG("Client sends:");
-        WOLFSSL_MSG(buff);
-        /* Check for server shutdown command */
-        if (strncmp(buff, "shutdown", 8) == 0) {
-            WOLFSSL_MSG("Shutdown command issued!");
-            shutdown = 1;
-        }
-        /* Write our reply into buff */
-        memset(buff, 0, sizeof(buff));
-        memcpy(buff, msg, sizeof(msg));
-        len = strnlen(buff, sizeof(buff));
-        /* Reply back to the client */
-        if (wolfSSL_write(ssl, buff, len) != len) {
-            ESP_LOGE(TAG, "ERROR: failed to write");
-        }
-        /* Cleanup after this connection */
-        wolfSSL_free(ssl);      /* Free the wolfSSL object              */
-        close(connd);           /* Close the connection to the client   */
-    }
-    /* Cleanup and return */
-    wolfSSL_CTX_free(ctx);  /* Free the wolfSSL context object          */
+    // wolfSSL_CTX_free(ctx);  /* Free the wolfSSL context object          */
     wolfSSL_Cleanup();      /* Cleanup the wolfSSL environment          */
-    close(sockfd);          /* Close the socket listening for clients   */
 
-    vTaskDelete(NULL);
 
-    return;                 /* Return reporting a success               */
+    server_test(args);
+    // wolfSSH_Init();
+
+   // int r = main_alt(args, args);
+
 }
