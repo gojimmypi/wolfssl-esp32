@@ -673,6 +673,10 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 	int  ch;
 	char nonBlock = 0;
 
+#if defined(WOLFSSL_ESPIDF) 
+	// no args
+	printf("Skipping argc/argv processing in server.c server_test()\n");
+#else
 	int     argc = ((func_args*)args)->argc;
 	char** argv = ((func_args*)args)->argv;
 	((func_args*)args)->return_code = 0;
@@ -700,6 +704,8 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 			exit(MY_EX_USAGE);
 		}
 	}
+#endif
+
 	myoptind = 0;      /* reset for test cases */
 
 #ifdef NO_RSA
@@ -754,10 +760,12 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 
 
 #if defined(WOLFSSL_ESPIDF) 
+	printf("Setup ESP-IDF tcp listener...");
 	static struct tcp_pcb* this_tcp;
 
-
+	printf("tcp_new()\n");
 	this_tcp = tcp_new();
+	printf("tcp_new() done\n");
 	if (this_tcp != NULL) {
 		err_t err;
 		/* Binding this this_tcp to 4242 to accept connections on this port
@@ -779,8 +787,12 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 		abort();
 	}
 #else
+	printf("Setup non ESP-IDF tcp listener...");
+
 	tcp_listen(&listenFd, &port, 1);
 #endif
+
+	printf("loop...\n");
 
 	do {
 		SOCKET_T      clientFd = 0;
