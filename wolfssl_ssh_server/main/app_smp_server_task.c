@@ -1,4 +1,4 @@
-/* server-tls-callback.c
+/* app_smp_server_task.c
  *
  * Copyright (C) 2006-2021 wolfSSL Inc.
  *
@@ -35,12 +35,24 @@
 #include <wolfssl/ssl.h>
 #include <wolfssl/certs_test.h>
 
+/* wolfSSL SSH */
+#include <wolfssl/wolfcrypt/sha256.h>
+#include <wolfssl/wolfcrypt/coding.h>
+#include <wolfssh/ssh.h>
+#include <wolfssh/test.h>
+#include <wolfssl/wolfcrypt/ecc.h>
+
+
 /* ESP specific */
 #include "wifi_connect.h"
+
+#include "server.h"
 
 #ifdef WOLFSSL_TRACK_MEMORY
 #include <wolfssl/wolfcrypt/mem_track.h>
 #endif
+
+int a = WS_CHANNEL_ID_SELF; // this is just a test to confirm we can access wolfssh
 
 static const char* const TAG = "app_server";
 
@@ -125,6 +137,10 @@ void my_atmel_free(int slotId)
 // this task name is hard-coded in our local wifi_connect.c
 void app_smp_server_task()
 {
+    // void* args = NULL;
+    // server_test(args);
+    wolfSSH_Init();
+
     int                sockfd;
     int                connd;
     struct sockaddr_in servAddr;
