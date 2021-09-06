@@ -46,9 +46,15 @@ idf.py menuconfig
 
 ## Frequently Used Commands
 
+See [Using the Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#using-the-build-system) `idf.py`:
+
 ```
 # prepare (only needed once per session)
 cd ~/esp/esp-idf
+
+# optionally show version. this repo developed with v4.4-dev-2825-gb63ec47238
+git describe
+
 . $HOME/esp/esp-idf/export.sh
 
 # configure for ESP-32 (from each project directory)
@@ -92,21 +98,60 @@ pip install pyserial
 
 ## Install esp-idf
 
+HACK TO FIX:
 
+Added this line to `/esp/esp-idf/components/wolfssh/src/internal.c`:
+```
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+```
+
+See the [Espressif Get Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html)
+
+```
+mkdir -p ~/esp
+cd ~/esp
+git clone --recursive https://github.com/espressif/esp-idf.git
+
+cd ~/esp/esp-idf
+./install.sh esp32
+```
 
 ## Install wolfssl and wolfssh
 
 
-
-
 ```
+# edit this next line if you want to you your own fork
+# note we are not pulling history with --depth 1 (MB vs MB)
+git clone --depth 1  https://github.com/wolfssl/wolfssl.git
+
+cd wolfssl
+./autogen.sh
+#./configure --enable-openssh --enable-ssh
+./configure --enable-ssh
+make
+sudo make install
+
+# create links and cache to recently added wolfSSH libraries
+sudo ldconfig
+
+# wolfSSL SSH
+cd $WORKSPACE
+git clone https://github.com/wolfSSL/wolfssh.git
+./autogen.sh
+./configure --enable-ssh
+
+# make builds all of the examples (not including IDE)
+make
+sudo make install
+sudo ldconfig
+make check
 ```
 
 ## System Include Libraries
 
-The esp-idf does *not* look at the normal `/usr/local/include`, and the current wolfssl-ssh does *not* copy the `SSH` libraries to the correct location.
+The esp-idf does *not* look at the normal `/usr/include/` and `/usr/local/include`; Further, the current wolfssl-ssh does *not* copy the `SSH` libraries to the correct location to be used by the Espressif IDF.
 
-wolfssh include directory needs to be manually copied to the components/wolfssl
+wolfssh include directory needs to be manually copied to the components/wolfssl, for example `~/esp/esp-idf/components/wolfssl/wolfssh/`.
 
 ```
 cd ~/esp/esp-idf/components/wolfssl/
@@ -122,6 +167,21 @@ idf.py -p /dev/ttyS9 -b 115200 flash
 Visual Studio users compiling in WSL may wish to turn off the CMake automated features:
 
 ~[disable-auto-cmake.png](../images/disable-auto-cmake.png)
+
+Searching for keywords in SSH libraries:
+```
+grep -rnw ~/esp/esp-idf/components/wolfssl/wolfssh/ -e 'THREAD_RETURN'
+```
+
+Searching for filea in `esp-idf`:
+
+```
+find . -name "protocol_examples_common.h"
+```
+
+See WOLFSSL_USER_SETTINGS [Confusion about include path](https://www.wolfssl.com/forums/topic1517-solved-confusion-about-include-path.html):
+
+> _If you are trying to use a `user_settings.h` with the configure script I would not recommend that approach instead when using the configure script it will generate the file `<wolfssl/options.h>` which is the replacement for `user_settings.h` when building with `./configure.`_
 
 # Troubleshooing
 
