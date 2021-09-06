@@ -70,97 +70,158 @@ static void ShowCiphers(void)
 
 #endif
 
-#if defined(WOLFSSL_ESPWROOM32SE) && defined(HAVE_PK_CALLBACKS) \
-                                  && defined(WOLFSSL_ATECC508A)
 
-#include "wolfssl/wolfcrypt/port/atmel/atmel.h"
+/* BSD Socket API Example
 
-/* when you want to use a custom slot allocation */
-/* enable the definition CUSTOM_SLOT_ALLOCATION. */
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
 
-#if defined(CUSTOM_SLOT_ALLOCATION)
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
+#include <string.h>
+#include <sys/param.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "esp_netif.h"
+#include "protocol_examples_common.h"
+#include "addr_from_stdin.h"
+#include "lwip/err.h"
+#include "lwip/sockets.h"
 
-static byte mSlotList[ATECC_MAX_SLOT];
 
-int atmel_set_slot_allocator(atmel_slot_alloc_cb alloc, atmel_slot_dealloc_cb dealloc);
+#if defined(CONFIG_EXAMPLE_IPV4)
+#define HOST_IP_ADDR CONFIG_EXAMPLE_IPV4_ADDR
+#elif defined(CONFIG_EXAMPLE_IPV6)
+#define HOST_IP_ADDR CONFIG_EXAMPLE_IPV6_ADDR
+#else
+#define HOST_IP_ADDR ""
+#endif
 
-/* initialize slot array */
-void my_atmel_slotInit()
+#define PORT 22
+
+#undef LOG_LOCAL_LEVEL
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+
+static const char* TAG = "example";
+static const char* payload = "Message from ESP32 ";
+
+static void tcp_client_task(void* pvParameters)
 {
-    int i;
+    printf("start tcp_client_task...\n");
 
-    for (i = 0; i < ATECC_MAX_SLOT; i++) {
-        mSlotList[i] = ATECC_INVALID_SLOT;
-    }
-}
+    char rx_buffer[128];
+    char host_ip[] = HOST_IP_ADDR;
+    int addr_family = 0;
+    int ip_protocol = 0;
 
-/* allocate slot depending on slotType */
-int my_atmel_alloc(int slotType)
-{
-    int i, slot = -1;
+    while (1) {
 
-    switch (slotType) {
-    case ATMEL_SLOT_ENCKEY:
-        slot = 4;
-        break;
-    case ATMEL_SLOT_DEVICE:
-        slot = 0;
-        break;
-    case ATMEL_SLOT_ECDHE:
-        slot = 0;
-        break;
-    case ATMEL_SLOT_ECDHE_ENC:
-        slot = 4;
-        break;
-    case ATMEL_SLOT_ANY:
-        for (i = 0; i < ATECC_MAX_SLOT; i++) {
-            if (mSlotList[i] == ATECC_INVALID_SLOT) {
-                slot = i;
+#define CONFIG_EXAMPLE_IPV4
+
+#if defined(CONFIG_EXAMPLE_IPV4)
+        struct sockaddr_in dest_addr;
+        dest_addr.sin_addr.s_addr = inet_addr(host_ip);
+        dest_addr.sin_family = AF_INET;
+        dest_addr.sin_port = htons(PORT);
+        addr_family = AF_INET;
+        ip_protocol = IPPROTO_IP;
+#elif defined(CONFIG_EXAMPLE_IPV6)
+        struct sockaddr_in6 dest_addr = { 0 };
+        inet6_aton(host_ip, &dest_addr.sin6_addr);
+        dest_addr.sin6_family = AF_INET6;
+        dest_addr.sin6_port = htons(PORT);
+        dest_addr.sin6_scope_id = esp_netif_get_netif_impl_index(EXAMPLE_INTERFACE);
+        addr_family = AF_INET6;
+        ip_protocol = IPPROTO_IPV6;
+#elif defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
+        struct sockaddr_storage dest_addr = { 0 };
+        ESP_ERROR_CHECK(get_addr_from_stdin(PORT, SOCK_STREAM, &ip_protocol, &addr_family, &dest_addr));
+#endif
+        int sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+            break;
+        }
+        ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
+
+        SOCKET_T      clientFd = 0;
+        SOCKADDR_IN_T clientAddr;
+        socklen_t     clientAddrSz = sizeof(clientAddr);
+
+
+        int err = connect(sock, (struct sockaddr*)&dest_addr, sizeof(struct sockaddr_in));
+        if (err != 0) {
+            ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
+            break;
+        }
+        ESP_LOGI(TAG, "Successfully connected");
+
+        while (1) {
+            int err = send(sock, payload, strlen(payload), 0);
+            if (err < 0) {
+                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 break;
             }
+
+            int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+            // Error occurred during receiving
+            if (len < 0) {
+                ESP_LOGE(TAG, "recv failed: errno %d", errno);
+                break;
+            }
+            // Data received
+            else {
+                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
+                ESP_LOGI(TAG, "%s", rx_buffer);
+            }
+
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+        }
+
+        if (sock != -1) {
+            ESP_LOGE(TAG, "Shutting down socket and restarting...");
+            shutdown(sock, 0);
+            close(sock);
         }
     }
-
-    return slot;
+    vTaskDelete(NULL);
 }
 
-/* free slot array       */
-void my_atmel_free(int slotId)
-{
-    if (slotId >= 0 && slotId < ATECC_MAX_SLOT) {
-        mSlotList[slotId] = ATECC_INVALID_SLOT;
-    }
-}
-#endif /* CUSTOM_SLOT_ALLOCATION                                       */
-#endif /* WOLFSSL_ESPWROOM32SE && HAVE_PK_CALLBACK && WOLFSSL_ATECC508A */
+
 
 // this task name is hard-coded in our local wifi_connect.c
 void app_smp_server_task()
 {
-    void* args = NULL;
+    printf("Hello World!\n");
 
-    printf("WSTARTTCP\n");
-    WSTARTTCP();
-    printf("WSTARTTCP done!\n");
+    ESP_ERROR_CHECK(nvs_flash_init());
+    printf("nvs_flash_init done!\n");
 
-    // TODO what's this?
-    // ChangeToWolfSshRoot();
+    ESP_ERROR_CHECK(esp_netif_init());
+    printf("esp_netif_init done!\n");
 
-#ifdef DEBUG_WOLFSSH
-    //wolfSSH_Debugging_ON();
-    printf("wolfSSH_Debugging_ON done!\n");
-#endif
+    //ESP_ERROR_CHECK(esp_event_loop_create_default());
+    //printf("esp_event_loop_create_default done!\n");
 
-    wolfSSH_Init();
-    printf("wolfSSH_Init done!\n");
+    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+     * Read "Establishing Wi-Fi or Ethernet Connection" section in
+     * examples/protocols/README.md for more information about this function.
+     */
+    // ESP_ERROR_CHECK(example_connect());
 
-    // wolfSSL_CTX_free(ctx);  /* Free the wolfSSL context object          */
-    wolfSSL_Cleanup();      /* Cleanup the wolfSSL environment          */
+    xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
 
-
-    server_test(args);
-    // wolfSSH_Init();
-
-   // int r = main_alt(args, args);
-
+    for (;; )
+    {
+        printf("end of task loop\n");
+        vTaskDelay(500000);
+    }
 }
