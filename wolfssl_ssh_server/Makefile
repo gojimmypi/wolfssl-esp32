@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := wolfssl_server
+PROJECT_NAME := wolfssl_ssh_server
 
 CFLAGS += -DWOLFSSL_USER_SETTINGS
 
