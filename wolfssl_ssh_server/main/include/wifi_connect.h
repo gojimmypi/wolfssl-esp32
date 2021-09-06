@@ -32,7 +32,7 @@
 
 #define DEFAULT_PORT                     11111
 
-#define APP_SMP_SERVER_TASK_NAME         "tls_sever_example"
+#define APP_SMP_SERVER_TASK_NAME         "ssh_sever_example"
 #define APP_SMP_SERVER_TASK_WORDS        10240
 #define APP_SMP_SERVER_TASK_PRIORITY     8
 
