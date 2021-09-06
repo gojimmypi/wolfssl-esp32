@@ -1,0 +1,1 @@
+Until the wolfssh has an Espressif IDE setup, contained hereim is a sample component directory.
