@@ -759,38 +759,9 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 
 
 
-#if defined(WOLFSSL_ESPIDF) 
-	printf("Setup ESP-IDF tcp listener...");
-	static struct tcp_pcb* this_tcp;
-
-	printf("tcp_new()\n");
-	this_tcp = tcp_new();
-	printf("tcp_new() done\n");
-	if (this_tcp != NULL) {
-		err_t err;
-		/* Binding this this_tcp to 4242 to accept connections on this port
-		 * - this has to be configured as DUT endpoint
-		 * - all network traffic from and to network stack is tracked in nettestif
-		 */
-		err = tcp_bind(this_tcp, IP_ADDR_ANY, (u16_t)&port);
-		if (err == ERR_OK) {
-			this_tcp = tcp_listen(this_tcp);
-			tcp_accept(this_tcp, test_accept);
-		}
-		else {
-			printf("cannot bind this_tcp\n");
-			abort();
-		}
-	}
-	else {
-		printf("cannot create this_tcp\n");
-		abort();
-	}
-#else
 	printf("Setup non ESP-IDF tcp listener...");
 
-	tcp_listen(&listenFd, &port, 1);
-#endif
+	tcp_listen_esp32(&listenFd, &port, 1);
 
 	printf("loop...\n");
 
