@@ -71,6 +71,7 @@ static void ShowCiphers(void)
 #endif
 
 
+
 /* BSD Socket API Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
@@ -83,7 +84,6 @@ static void ShowCiphers(void)
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -91,107 +91,154 @@ static void ShowCiphers(void)
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "protocol_examples_common.h"
-#include "addr_from_stdin.h"
+
 #include "lwip/err.h"
 #include "lwip/sockets.h"
+#include "lwip/sys.h"
+#include <lwip/netdb.h>
 
 
-#if defined(CONFIG_EXAMPLE_IPV4)
-#define HOST_IP_ADDR CONFIG_EXAMPLE_IPV4_ADDR
-#elif defined(CONFIG_EXAMPLE_IPV6)
-#define HOST_IP_ADDR CONFIG_EXAMPLE_IPV6_ADDR
-#else
-#define HOST_IP_ADDR ""
-#endif
-
-#define PORT 22
-
-#undef LOG_LOCAL_LEVEL
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#define PORT                        22
+#define KEEPALIVE_IDLE              1
+#define KEEPALIVE_INTERVAL          1
+#define KEEPALIVE_COUNT             10
 
 static const char* TAG = "example";
-static const char* payload = "Message from ESP32 ";
 
-static void tcp_client_task(void* pvParameters)
+static void do_retransmit(const int sock)
 {
-    printf("start tcp_client_task...\n");
-
+    int len;
     char rx_buffer[128];
-    char host_ip[] = HOST_IP_ADDR;
-    int addr_family = 0;
+
+    do {
+        len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+        if (len < 0) {
+            ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
+        }
+        else if (len == 0) {
+            ESP_LOGW(TAG, "Connection closed");
+        }
+        else {
+            rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
+            ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+
+            // send() can return less bytes than supplied length.
+            // Walk-around for robust implementation.
+            int to_write = len;
+            while (to_write > 0) {
+                int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
+                if (written < 0) {
+                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+                }
+                to_write -= written;
+            }
+        }
+    } while (len > 0);
+}
+
+static void tcp_server_task(void* pvParameters)
+{
+    esp_log_level_set("*", ESP_LOG_DEBUG);
+    printf("tcp_server_task start \n");
+    char addr_str[128];
+    int addr_family = (int)pvParameters;
     int ip_protocol = 0;
+    int keepAlive = 1;
+    int keepIdle = KEEPALIVE_IDLE;
+    int keepInterval = KEEPALIVE_INTERVAL;
+    int keepCount = KEEPALIVE_COUNT;
+    struct sockaddr_storage dest_addr;
+
+    if (addr_family == AF_INET) {
+        struct sockaddr_in* dest_addr_ip4 = (struct sockaddr_in*)&dest_addr;
+        dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
+        dest_addr_ip4->sin_family = AF_INET;
+        dest_addr_ip4->sin_port = htons(PORT);
+        ip_protocol = IPPROTO_IP;
+    }
+#ifdef CONFIG_EXAMPLE_IPV6
+    else if (addr_family == AF_INET6) {
+        struct sockaddr_in6* dest_addr_ip6 = (struct sockaddr_in6*)&dest_addr;
+        bzero(&dest_addr_ip6->sin6_addr.un, sizeof(dest_addr_ip6->sin6_addr.un));
+        dest_addr_ip6->sin6_family = AF_INET6;
+        dest_addr_ip6->sin6_port = htons(PORT);
+        ip_protocol = IPPROTO_IPV6;
+    }
+#endif
+
+    printf("tcp_server_task setup listen \n");
+    int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+    printf("tcp_server_task listen complete \n");
+
+    if (listen_sock < 0) {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        vTaskDelete(NULL);
+        printf("tcp_server_task listen error \n");
+        return;
+    }
+    int opt = 1;
+    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+#if defined(CONFIG_EXAMPLE_IPV4) && defined(CONFIG_EXAMPLE_IPV6)
+    // Note that by default IPV6 binds to both protocols, it is must be disabled
+    // if both protocols used at the same time (used in CI)
+    setsockopt(listen_sock, IPPROTO_IPV6, IPV6_V6ONLY, &opt, sizeof(opt));
+#endif
+
+    ESP_LOGI(TAG, "Socket created");
+    printf("tcp_server_task created! \n");
+
+    int err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+    if (err != 0) {
+        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        ESP_LOGE(TAG, "IPPROTO: %d", addr_family);
+        goto CLEAN_UP;
+    }
+    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+    printf("tcp_server_task bound! \n");
+
+    err = listen(listen_sock, 1);
+    if (err != 0) {
+        ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
+        goto CLEAN_UP;
+    }
+    printf("tcp_server_task listening! \n");
 
     while (1) {
 
-#define CONFIG_EXAMPLE_IPV4
+        ESP_LOGI(TAG, "Socket listening");
 
-#if defined(CONFIG_EXAMPLE_IPV4)
-        struct sockaddr_in dest_addr;
-        dest_addr.sin_addr.s_addr = inet_addr(host_ip);
-        dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(PORT);
-        addr_family = AF_INET;
-        ip_protocol = IPPROTO_IP;
-#elif defined(CONFIG_EXAMPLE_IPV6)
-        struct sockaddr_in6 dest_addr = { 0 };
-        inet6_aton(host_ip, &dest_addr.sin6_addr);
-        dest_addr.sin6_family = AF_INET6;
-        dest_addr.sin6_port = htons(PORT);
-        dest_addr.sin6_scope_id = esp_netif_get_netif_impl_index(EXAMPLE_INTERFACE);
-        addr_family = AF_INET6;
-        ip_protocol = IPPROTO_IPV6;
-#elif defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
-        struct sockaddr_storage dest_addr = { 0 };
-        ESP_ERROR_CHECK(get_addr_from_stdin(PORT, SOCK_STREAM, &ip_protocol, &addr_family, &dest_addr));
-#endif
-        int sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+        socklen_t addr_len = sizeof(source_addr);
+        int sock = accept(listen_sock, (struct sockaddr*)&source_addr, &addr_len);
         if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+            ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
             break;
         }
-        ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
 
-        SOCKET_T      clientFd = 0;
-        SOCKADDR_IN_T clientAddr;
-        socklen_t     clientAddrSz = sizeof(clientAddr);
-
-
-        int err = connect(sock, (struct sockaddr*)&dest_addr, sizeof(struct sockaddr_in));
-        if (err != 0) {
-            ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
-            break;
+        // Set tcp keepalive option
+        setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
+        // Convert ip address to string
+        if (source_addr.ss_family == PF_INET) {
+            inet_ntoa_r(((struct sockaddr_in*)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
         }
-        ESP_LOGI(TAG, "Successfully connected");
-
-        while (1) {
-            int err = send(sock, payload, strlen(payload), 0);
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-
-            int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-            // Error occurred during receiving
-            if (len < 0) {
-                ESP_LOGE(TAG, "recv failed: errno %d", errno);
-                break;
-            }
-            // Data received
-            else {
-                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-                ESP_LOGI(TAG, "%s", rx_buffer);
-            }
-
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+#ifdef CONFIG_EXAMPLE_IPV6
+        else if (source_addr.ss_family == PF_INET6) {
+            inet6_ntoa_r(((struct sockaddr_in6*)&source_addr)->sin6_addr, addr_str, sizeof(addr_str) - 1);
         }
+#endif
+        ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
 
-        if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket and restarting...");
-            shutdown(sock, 0);
-            close(sock);
-        }
+        do_retransmit(sock);
+
+        shutdown(sock, 0);
+        close(sock);
     }
+
+CLEAN_UP:
+    close(listen_sock);
     vTaskDelete(NULL);
 }
 
@@ -201,15 +248,13 @@ static void tcp_client_task(void* pvParameters)
 void app_smp_server_task()
 {
     printf("Hello World!\n");
-
     ESP_ERROR_CHECK(nvs_flash_init());
     printf("nvs_flash_init done!\n");
-
     ESP_ERROR_CHECK(esp_netif_init());
     printf("esp_netif_init done!\n");
 
-    //ESP_ERROR_CHECK(esp_event_loop_create_default());
-    //printf("esp_event_loop_create_default done!\n");
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // printf("esp_event_loop_create_default done!\n");
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
@@ -217,7 +262,19 @@ void app_smp_server_task()
      */
     // ESP_ERROR_CHECK(example_connect());
 
-    xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
+    printf("xTaskCreate tcp_server_task \n");
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+    printf("xTaskCreate tcp_server_task done.\n");
+
+
+#ifdef CONFIG_EXAMPLE_IPV4
+    printf("tcp_server_task IPV4!\n");
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+#endif
+#ifdef CONFIG_EXAMPLE_IPV6
+    printf("tcp_server_task IPV6!\n");
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET6, 5, NULL);
+#endif
 
     for (;; )
     {
