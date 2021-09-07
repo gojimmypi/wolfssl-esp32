@@ -537,11 +537,11 @@ static INLINE void tcp_socket(WS_SOCKET_T* sockFd)
 #if defined(WOLFSSH_TEST_SERVER) && !defined(FREESCALE_MQX)
 
 #if defined(WOLFSSL_ESPIDF) 
-// tcp_listen is already defined for ESP32
-// nothing to do for ESP32, which has its own tcp listener. (but different! see local server.c)
-// see macro: esp/esp-idf/components/lwip/lwip/src/include/lwip/tcp.h
+// tcp_listen is already defined for ESP32, so here we'll call this one tcp_listen_esp32
+static INLINE void tcp_listen_esp32(WS_SOCKET_T* sockfd, word16* port, int useAnyAddr)
 #else
 static INLINE void tcp_listen(WS_SOCKET_T* sockfd, word16* port, int useAnyAddr)
+#endif
 {
 #ifdef MICROCHIP_MPLAB_HARMONY
     /* does bind and listen and returns the socket */
@@ -602,7 +602,6 @@ static INLINE void tcp_listen(WS_SOCKET_T* sockfd, word16* port, int useAnyAddr)
     #endif
 #endif /* MICROCHIP_MPLAB_HARMONY */
 }
-#endif
 
 #endif /* WOLFSSH_TEST_SERVER */
 
