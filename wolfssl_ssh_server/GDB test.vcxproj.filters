@@ -22,8 +22,31 @@
     <ClInclude Include="__vm\.GDB test.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="__vm\.wolfssl_ssh_server.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="main\include\wifi_connect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="main\server.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="main\test.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="board.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main\app_smp_server_task.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main\server.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main\wifi_connect.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

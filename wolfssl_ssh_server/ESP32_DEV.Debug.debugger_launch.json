@@ -7,6 +7,7 @@
   //       To access Visual Studio macros and environment variables or hard code
   // This file is for advanced use. Please use the pre-configured built-in hardware debuggers where possible.
   //
+
   "serverLaunchTimeout": 5000,
   "filterStdout": false,
   "filterStderr": true,
@@ -16,14 +17,16 @@
   "MIMode": "gdb",
   //"environment": [],
   //"customLaunchSetupCommands": [],
-  "MIDebuggerServerAddress": "$(miDebuggerServerAddress)",
-  "cwd": "$(buildPath)",
-  "MIDebuggerPath": "$(miDebuggerPath)",
-  "MIDebuggerArgs": "$(miDebuggerArgs)",
-  "debugServerPath": "$(debugServerPath)",
-  "debugServerArgs": "$(debugServerArgs)",
-  "setupCommands": [],
-  "program": "$(program)",
+  "MIDebuggerServerAddress": "localhost:3333",
+  "cwd": "C:\\workspace\\wolfssl-esp32\\wolfssl_ssh_server\\build",
+
+  "MIDebuggerPath": "C:\\Users\\gojimmypi\\.espressif\\tools\\xtensa-esp32-elf\\esp-2021r1-8.4.0\\xtensa-esp32-elf\\bin\\xtensa-esp32-elf-gdb.exe",
+  "MIDebuggerArgs": "build/wolfssl_ssh_server.elf -x gdbinit",
+
+  "debugServerPath": "C:\\Users\\gojimmypi\\.espressif\\tools\\openocd-esp32\\v0.10.0-esp32-20210401\\openocd-esp32\\bin\\openocd.exe",
+  "debugServerArgs": "-f interface/jlink.cfg -c adapter_khz 1000 -f target/esp32.cfg",
+  //  "setupCommands": [],
+  "program": "C:\\workspace\\wolfssl-esp32\\wolfssl_ssh_server\\build\\wolfssl_ssh_server.elf",
   "logging": {
     "moduleLoad": false,
     "trace": false,
