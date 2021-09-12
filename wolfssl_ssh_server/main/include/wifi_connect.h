@@ -30,7 +30,7 @@
 #include "esp_event_loop.h"
 #endif
 
-#define DEFAULT_PORT                     11111
+#define DEFAULT_PORT                     22
 
 #define APP_SMP_SERVER_TASK_NAME         "ssh_sever_example"
 #define APP_SMP_SERVER_TASK_WORDS        10240
