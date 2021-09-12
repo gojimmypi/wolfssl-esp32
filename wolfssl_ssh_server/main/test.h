@@ -29,6 +29,9 @@
 /*#include <wolfssh/error.h>*/
 #endif
 
+#include <signal.h>
+
+
 #ifdef USE_WINDOWS_API
     #ifndef _WIN32_WCE
         #include <process.h>
@@ -212,7 +215,7 @@
     /* port 8080 was open with QEMU */
     static const word16 wolfSshPort = 8080;
 #else
-    static const word16 wolfSshPort = 22222;
+    static const word16 wolfSshPort = 22;
 #endif
 
 #ifdef __GNUC__
@@ -504,7 +507,7 @@ static INLINE void tcp_socket(WS_SOCKET_T* sockFd)
 #elif defined(WOLFSSL_NUCLEUS)
     /* nothing to define */
 #else  /* no S_NOSIGPIPE */
-    signal(SIGPIPE, SIG_IGN);
+    // signal(SIGPIPE, SIG_IGN);
 #endif /* S_NOSIGPIPE */
 
 #if defined(TCP_NODELAY)
