@@ -1,6 +1,6 @@
 #wolfSSL Example
 
-The Example contains a wolfSSL simple server.
+The Example contains a wolfSSL simple server, modified (WIP) to be a SSH server.
 
 1. "make menuconfigure" to configure the project
 
