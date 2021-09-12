@@ -151,6 +151,8 @@ static int NonBlockSSH_accept(WOLFSSH* ssh)
 
 static THREAD_RETURN WOLFSSH_THREAD server_worker(void* vArgs)
 {
+	// printf("server worker!\n");
+
 	int ret;
 	thread_ctx_t* threadCtx = (thread_ctx_t*)vArgs;
 
@@ -175,12 +177,20 @@ static THREAD_RETURN WOLFSSH_THREAD server_worker(void* vArgs)
 	wolfSSH_SetScpSendCtx(threadCtx->ssh, (void*)&scpBufferSend);
 #endif
 
-	if (!threadCtx->nonBlock)
+	if (!threadCtx->nonBlock) {
 		ret = wolfSSH_accept(threadCtx->ssh);
-	else
+		printf("server worker wolfSSH_accept done!\n");
+	}
+	else {
+		printf("server worker NonBlockSSH_accept!\n");
+
 		ret = NonBlockSSH_accept(threadCtx->ssh);
+	}
+	
+	printf(ret);
 
 	if (ret == WS_SUCCESS) {
+		printf("server worker success!\n");
 		byte* buf = NULL;
 		byte* tmpBuf;
 		int bufSz, backlogSz = 0, rxSz, txSz, stop = 0, txSum;
@@ -195,18 +205,23 @@ static THREAD_RETURN WOLFSSH_THREAD server_worker(void* vArgs)
 				buf = tmpBuf;
 
 			if (!stop) {
+				printf("server worker here we go!\n");
+
 				do {
 					rxSz = wolfSSH_stream_read(threadCtx->ssh,
 						buf + backlogSz,
 						EXAMPLE_BUFFER_SZ);
 					if (rxSz <= 0)
 						rxSz = wolfSSH_get_error(threadCtx->ssh);
+					printf("server worker stream read!\n");
+
 				} while (rxSz == WS_WANT_READ || rxSz == WS_WANT_WRITE);
 
 				if (rxSz > 0) {
 					backlogSz += rxSz;
 					txSum = 0;
 					txSz = 0;
+					printf("server worker send!\n");
 
 					while (backlogSz != txSum && txSz >= 0 && !stop) {
 						txSz = wolfSSH_stream_send(threadCtx->ssh,
@@ -250,6 +265,7 @@ static THREAD_RETURN WOLFSSH_THREAD server_worker(void* vArgs)
 		free(buf);
 	}
 	else if (ret == WS_SCP_COMPLETE) {
+		printf("server worker scp complete!\n");
 		printf("scp file transfer completed\n");
 #if defined(WOLFSSH_SCP) && defined(NO_FILESYSTEM)
 		if (scpBufferRecv.fileSz > 0) {
@@ -270,10 +286,19 @@ static THREAD_RETURN WOLFSSH_THREAD server_worker(void* vArgs)
 	else if (ret == WS_SFTP_COMPLETE) {
 		printf("Use example/echoserver/echoserver for SFTP\n");
 	}
+	printf("server worker stream exit...\n");
 	wolfSSH_stream_exit(threadCtx->ssh, 0);
+
+
+	printf("server worker stream WCLOSESOCKET...\n");
 	WCLOSESOCKET(threadCtx->fd);
+
+	printf("server worker wolfSSH_free...\n");
 	wolfSSH_free(threadCtx->ssh);
+
+	printf("server worker free(threadCtx)...\n");
 	free(threadCtx);
+	printf("server worker done!\n");
 
 	return 0;
 }
@@ -627,39 +652,6 @@ static void ShowUsage(void)
 	printf(" -N            use non-blocking sockets\n");
 }
 
-#if defined(WOLFSSL_ESPIDF) 
-static err_t test_recv(void* arg, struct tcp_pcb* tpcb, struct pbuf* p, err_t err)
-{
-	return ERR_OK;
-}
-
-static void test_error(void* arg, err_t err)
-{
-	printf("Error CB from pcb %d\n", err);
-}
-
-static err_t test_poll(void* arg, struct tcp_pcb* tpcb)
-{
-	return ERR_OK;
-}
-
-static err_t test_accept(void* arg, struct tcp_pcb* newpcb, err_t err)
-{
-	LWIP_UNUSED_ARG(arg);
-	LWIP_UNUSED_ARG(err);
-
-	tcp_setprio(newpcb, TCP_PRIO_MIN);
-	tcp_arg(newpcb, NULL);
-	tcp_recv(newpcb, test_recv);
-	tcp_err(newpcb, test_error);
-	tcp_poll(newpcb, test_poll, 0);
-
-	return ERR_OK;
-}
-
-#endif
-
-
 THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 {
 	WOLFSSH_CTX* ctx = NULL;
@@ -780,12 +772,16 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 			fprintf(stderr, "Couldn't allocate thread context data.\n");
 			exit(EXIT_FAILURE);
 		}
+		printf("got threadCtx\n");
 
 		ssh = wolfSSH_new(ctx);
 		if (ssh == NULL) {
 			fprintf(stderr, "Couldn't allocate SSH data.\n");
 			exit(EXIT_FAILURE);
 		}
+		printf("got ssh\n");
+
+
 		wolfSSH_SetUserAuthCtx(ssh, &pwMapList);
 		/* Use the session object for its own highwater callback ctx */
 		if (defaultHighwater > 0) {
@@ -793,15 +789,25 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 			wolfSSH_SetHighwater(ssh, defaultHighwater);
 		}
 
+		printf("clientFd...\n");
 		clientFd = accept(listenFd, (struct sockaddr*)&clientAddr,
 			&clientAddrSz);
-		if (clientFd == -1)
-			err_sys("tcp accept failed");
+		printf("clientFd Done.\n");
 
-		if (nonBlock)
+		if (clientFd == -1) {
+			printf("tcp accept failed\n");
+
+			err_sys("tcp accept failed");
+		}
+
+		if (nonBlock) {
+			printf("nonBlock.\n");
 			tcp_set_nonblocking(&clientFd);
+			printf("nonBlock done.\n");
+		}
 
 		wolfSSH_set_fd(ssh, (int)clientFd);
+		printf("wolfSSH_set_fd done.\n");
 
 		threadCtx->ssh = ssh;
 		threadCtx->fd = clientFd;
@@ -809,6 +815,7 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 		threadCtx->nonBlock = nonBlock;
 
 #ifndef SINGLE_THREADED
+		printf("not single thread.\n");
 		ThreadStart(server_worker, threadCtx, &thread);
 
 		if (multipleConnections)
@@ -816,9 +823,13 @@ THREAD_RETURN WOLFSSH_THREAD server_test(void* args)
 		else
 			ThreadJoin(thread);
 #else
+		printf("thread....\n");
 		server_worker(threadCtx);
 #endif /* SINGLE_THREADED */
+		printf("next loop.\n");
 	} while (multipleConnections);
+
+	printf("loop exit.\n");
 
 	PwMapListDelete(&pwMapList);
 	wolfSSH_CTX_free(ctx);
