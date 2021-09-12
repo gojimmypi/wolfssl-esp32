@@ -99,9 +99,9 @@ static void ShowCiphers(void)
 
 
 #define PORT                        22
-#define KEEPALIVE_IDLE              1
-#define KEEPALIVE_INTERVAL          1
-#define KEEPALIVE_COUNT             10
+#define KEEPALIVE_IDLE              7200
+#define KEEPALIVE_INTERVAL          60
+#define KEEPALIVE_COUNT             20
 
 static const char* TAG = "example";
 
@@ -138,6 +138,11 @@ static void do_retransmit(const int sock)
 
 static void tcp_server_task(void* pvParameters)
 {
+    void* args = NULL;
+    server_test(args);
+    exit(0);
+
+
     esp_log_level_set("*", ESP_LOG_DEBUG);
     printf("tcp_server_task start \n");
     char addr_str[128];
@@ -247,6 +252,14 @@ CLEAN_UP:
 // this task name is hard-coded in our local wifi_connect.c
 void app_smp_server_task()
 {
+    void* args = NULL;
+    for (;; )
+    {
+        server_test(args);
+        printf("end of task server_test\n");
+        
+    }
+
     printf("Hello World!\n");
     ESP_ERROR_CHECK(nvs_flash_init());
     printf("nvs_flash_init done!\n");
