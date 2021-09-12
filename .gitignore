@@ -6,3 +6,4 @@
 */out/build/*
 */build
 */main/out/build/*
+/wolfssl_ssh_server/Debug
