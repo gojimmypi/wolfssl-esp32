@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 /*ESP specific */
+#include <stdio.h>
+
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -76,6 +79,7 @@ static void set_time()
 /* create task */
 static void app_smp_server_init(void)
 {
+    printf("wifi connect start...!");
     int ret;
     xTaskHandle _handle;
     /* http://esp32.info/docs/esp_idf/html/dd/d3c/group__xTaskCreate.html */
@@ -116,11 +120,13 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
     default:
         break;
     }
+    printf("wifi connect end...!");
     return ESP_OK;
 }
 /* entry point */
 void app_main(void)
 {
+    printf("wifi app main start...!");
     ESP_LOGI(TAG, "Start app_main...");
     ESP_ERROR_CHECK(nvs_flash_init());
 
@@ -165,4 +171,5 @@ void app_main(void)
 #endif
     ESP_LOGI(TAG, "Set dummy time...");
     set_time();
+    printf("wifi app main end...!");
 }
