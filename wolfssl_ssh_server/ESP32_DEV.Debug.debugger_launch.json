@@ -1,0 +1,36 @@
+{
+  // GDB Project:  "$(ProjectName)"
+  // Microsoft MI: https://github.com/Microsoft/vscode-cpptools/blob/master/launch.md#customlaunchsetupcommands
+  // Visualizations: https://docs.microsoft.com/en-us/visualstudio/debugger/create-custom-views-of-native-objects?view=vs-2019
+  // User Guide: https://www.visualmicro.com/page/User-Guide.aspx?doc=Arduino-gdb-Tutorial.html
+  // Tips: To access resolved Arduino 3rd party hardware spec. properties, use $(variables) with the same name as the mi json prpperties
+  //       To access Visual Studio macros and environment variables or hard code
+  // This file is for advanced use. Please use the pre-configured built-in hardware debuggers where possible.
+  //
+  "serverLaunchTimeout": 5000,
+  "filterStdout": false,
+  "filterStderr": true,
+  "targetArchitecture": "arm",
+  "stopAtEntry": false,
+  "externalConsole": false,
+  "MIMode": "gdb",
+  //"environment": [],
+  //"customLaunchSetupCommands": [],
+  "MIDebuggerServerAddress": "$(miDebuggerServerAddress)",
+  "cwd": "$(buildPath)",
+  "MIDebuggerPath": "$(miDebuggerPath)",
+  "MIDebuggerArgs": "$(miDebuggerArgs)",
+  "debugServerPath": "$(debugServerPath)",
+  "debugServerArgs": "$(debugServerArgs)",
+  "setupCommands": [],
+  "program": "$(program)",
+  "logging": {
+    "moduleLoad": false,
+    "trace": false,
+    "engineLogging": false,
+    "programOutput": false,
+    "exceptions": false,
+    "traceResponse": false
+  }
+
+}
