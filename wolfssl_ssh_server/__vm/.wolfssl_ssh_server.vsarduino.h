@@ -15,16 +15,20 @@
 #define _VSARDUINO_H_
 #define __ESP32_esp32__
 #define __ESP32_ESP32__
-#define ESP_PLATFORM
 #define HAVE_CONFIG_H
-#define GCC_NOT_5_2_0 0
+#define UNITY_INCLUDE_CONFIG_H
 #define WITH_POSIX
+#define _GNU_SOURCE
+#define ESP_PLATFORM
 #define F_CPU 240000000L
 #define ARDUINO 108010
 #define ARDUINO_ESP32_DEV
 #define ARDUINO_ARCH_ESP32
 #define ESP32
 #define CORE_DEBUG_LEVEL 0
+#define ARDUINO_RUNNING_CORE 1
+#define ARDUINO_EVENT_RUNNING_CORE 1
+#define ARDUINO_USB_CDC_ON_BOOT 0
 #define __cplusplus 201103L
 
 #define _Pragma(x)
@@ -107,6 +111,5 @@ typedef long pthread_cond_t;
 #define READ_PERI_REG(addr)
 // Write Value to Register
 #define WRITE_PERI_REG(addr,val)
-#include "GDB test.ino"
 #endif
 #endif

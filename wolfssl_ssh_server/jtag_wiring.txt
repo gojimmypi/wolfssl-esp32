@@ -1,0 +1,6 @@
+TDI -> GPIO12
+TCK -> GPIO13
+TMS -> GPIO14
+TDO -> GPIO15
+TRST -> EN / RST (Reset)
+GND -> GND

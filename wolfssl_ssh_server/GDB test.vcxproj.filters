@@ -15,7 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="GDB test.ino" />
     <None Include="ESP32_DEV.Debug.debugger_launch.json" />
   </ItemGroup>
   <ItemGroup>
